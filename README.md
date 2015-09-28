@@ -10,3 +10,15 @@ If successful, this will make it very hard for a machine to deduce what is actua
 Data taken from
 
 [Patterns of phoneme perception errors by listeners with cochlear implants as a function of overall speech perception ability](http://www.ncbi.nlm.nih.gov/pubmed/12597186)
+
+Mappings of missing ARPAbet sounds:
+
++ AO, EH
++ AY, AA + IH
++ AW, AA + AH
++ OY, EH + IH
++ CH, SH + TH
++ JH, SH + ZH
++ HH, Y
++ NG, N + G
++ W,  B
