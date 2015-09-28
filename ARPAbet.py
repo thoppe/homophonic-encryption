@@ -12,7 +12,6 @@ phoneme_types = {
     "liquid"      : "consonant",    
 }
 
-
 phonemes={
     'AA':'monophthong',
     'AE':'monophthong',
@@ -53,6 +52,22 @@ phonemes={
     'Y':'semivowel',
     'Z':'fricative',
     'ZH':'fricative',
+}
+
+'''
+For the phonemes missing in the confusion matrix study,
+we map them to linear combinations of the known values.
+'''
+missing_phoneme_mappings = {
+    "AO" : ("EH",),
+    "AY" : ("AA","IH"),
+    "AW" : ("AA","AH"),
+    "OY" : ("EH","IH"),
+    "CH" : ("SH","TH"),
+    "JH" : ("SH","ZH"),
+    "HH" : ("Y",),
+    "NG" : ("N","G"),
+    "W"  : ("B",),
 }
 
 class araphet_phoneme(object):
