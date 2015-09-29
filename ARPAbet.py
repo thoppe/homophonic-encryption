@@ -1,15 +1,32 @@
 import itertools
+import pandas as pd
+
+f_vowels = "confusion_matrices/confusion_vowels_poor.csv"
+f_consonants = "confusion_matrices/confusion_consonants_poor.csv"
+
+def load_confusion_matrix(f_matrix):
+    df = pd.read_csv(f_matrix,index_col=0)
+
+    # Make the matrices symmetric
+    df += df.T
+    df /= 2.0
+    return df
+
+confusion = {}
+confusion["vowel"] = load_confusion_matrix(f_vowels)
+confusion["consonant"] = load_confusion_matrix(f_consonants)
 
 phoneme_types = {
     "monophthong" : "vowel",
     "diphthong"   : "vowel",
     "rcolored"    : "vowel",
-    "semivowel"   : "vowel",
+    "semivowel"   : "consonant",
     "stop"        : "consonant",
     "affricate"   : "consonant",
     "fricative"   : "consonant",
-    "nasals"      : "consonant",
-    "liquid"      : "consonant",    
+    "nasal"       : "consonant",
+    "liquid"      : "consonant",
+    "aspirate"    : "consonant",
 }
 
 phonemes={
@@ -54,22 +71,33 @@ phonemes={
     'ZH':'fricative',
 }
 
+def get_phoneme_type(p):
+    p_object = phonemes[p]
+    return phoneme_types[p_object]
+
 '''
 For the phonemes missing in the confusion matrix study,
 we map them to linear combinations of the known values.
 '''
 missing_phoneme_mappings = {
-    "AO" : ("EH",),
-    "AY" : ("AA","IH"),
-    "AW" : ("AA","AH"),
-    "OY" : ("EH","IH"),
-    "CH" : ("SH","TH"),
-    "JH" : ("SH","ZH"),
-    "HH" : ("Y",),
-    "NG" : ("N","G"),
-    "W"  : ("B",),
+    "AO" : ["EH",],
+    "AY" : ["AA","IH"],
+    "AW" : ["AA","AH"],
+    "OY" : ["EH","IH"],
+    "CH" : ["SH","TH"],
+    "JH" : ["SH","ZH"],
+    "HH" : ["Y",],
+    "NG" : ["N","G"],
+    "W"  : ["B",],
 }
 
+# Fill in the missing phonemes with linear combinations
+for key,values in missing_phoneme_mappings.items():
+    df = confusion[get_phoneme_type(key)]
+    row = df[values].mean(axis=1)
+    row[key] = row[values].mean()
+    df[key] = row
+    
 class araphet_phoneme(object):
 
     def __init__(self, val):
@@ -105,5 +133,10 @@ b = araphet_phoneme('AE2')
 c = araphet_phoneme('AE')
 d = araphet_phoneme('ZH')
 
+print confusion["vowel"]
+
 for x,y in itertools.combinations([a,b,c,d,a],r=2):
     print x,y,x.delta(y)
+
+
+
