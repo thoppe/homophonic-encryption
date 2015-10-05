@@ -1,4 +1,5 @@
 import itertools
+import numpy as np
 import pandas as pd
 
 f_vowels = "confusion_matrices/confusion_vowels_poor.csv"
@@ -96,7 +97,13 @@ for key,values in missing_phoneme_mappings.items():
     df = confusion[get_phoneme_type(key)]
     row = df[values].mean(axis=1)
     row[key] = row[values].mean()
-    df[key] = row
+
+    # Add a new column
+    df [key]  = row
+
+    # Add a new row
+    df.loc[key] = row
+
     
 class araphet_phoneme(object):
 
@@ -127,7 +134,78 @@ class araphet_phoneme(object):
             return 0.25
         return 0.0
 
+class ARPAstat(object):
+    '''
+    A phoneme-based model for language using a combination of ARPAbet 
+    and statistical mechanics.
+    '''
+    def __init__(self, kT=1.0):
+        self.kT = kT
+        self.confusion = confusion
+        self.energy = {}
+        self.Z = {}
 
+        for key in confusion:
+            self.energy[key] = E = confusion[key].copy()
+
+            # Convert the confusion matrix into a probability
+            E /= E.sum(axis=0)
+
+            # Blank values (from linear combinations) are set to lowest
+            E[E==0] = E[E>0].min().min()
+
+            # Convert probability to energy at baseline kT=1.0
+            self.energy[key] = -np.log(E)
+
+            # Symmetrize
+            self.energy[key] = (self.energy[key]+self.energy[key].T)/2
+
+            # Scale for numerical reasons
+            self.energy[key] -= self.energy[key].values.mean()
+
+            # Reasonable partition function
+            self.Z  = np.exp(self.energy[key]/self.kT).sum(axis=0)
+            self.Z /= self.Z.shape[0]
+        
+    def delta(self,x,y):
+        '''
+        Returns a cost scaled between 0,1
+        '''
+        
+        a,b = map(araphet_phoneme, [x,y])
+
+        if a.ptype != b.ptype:
+            EA = self.energy[a.ptype]
+            EB = self.energy[b.ptype]
+            E = max(EA.values.max(), EB.values.max())
+        else:
+            E_matrix = self.energy[a.ptype]
+            E = E_matrix[a.symbol][b.symbol]
+
+        z = (self.Z[a.symbol]+self.Z[b.symbol])/2
+        return np.exp(E/self.kT)/z
+
+#C = confusion["vowel"]
+#print C
+#C /= C.sum(axis=0)
+#print -np.log(C)
+#exit()
+
+A = ARPAstat(0.75)
+x,y = 'AE','AE'
+print "Exact", A.delta(x,y), A.delta(y,x)
+print
+
+x,y = 'AE','AA'
+print "Close", A.delta(x,y), A.delta(y,x)
+print
+
+x,y = 'AE','AO'
+print "Far  ", A.delta(x,y), A.delta(y,x)
+print
+
+exit()
+        
 a = araphet_phoneme('AO1')
 b = araphet_phoneme('AE2')
 c = araphet_phoneme('AE')
