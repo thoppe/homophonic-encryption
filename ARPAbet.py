@@ -139,8 +139,8 @@ class ARPAstat(object):
     A phoneme-based model for language using a combination of ARPAbet 
     and statistical mechanics.
     '''
-    def __init__(self, kT=1.0):
-        self.kT = kT
+    def __init__(self, scale=1.0):
+        self.scale = scale
         self.confusion = confusion
         self.energy = {}
         self.Z = {}
@@ -158,7 +158,17 @@ class ARPAstat(object):
             self.energy[key] = -np.log(E)
 
             # Symmetrize
-            self.energy[key] = (self.energy[key]+self.energy[key].T)/2
+            #self.energy[key] = (self.energy[key]+self.energy[key].T)/2
+
+            # Scale the energy
+            self.energy[key] *= self.scale
+
+            # Scale the energy so the minimum at each row is zero
+            self.energy[key] -= self.energy[key].min(axis=0)
+
+        '''
+            print "DONE"
+            exit()
 
             # Scale for numerical reasons
             self.energy[key] -= self.energy[key].values.mean()
@@ -166,6 +176,7 @@ class ARPAstat(object):
             # Reasonable partition function
             self.Z  = np.exp(self.energy[key]/self.kT).sum(axis=0)
             self.Z /= self.Z.shape[0]
+        '''
         
     def delta(self,x,y):
         '''
@@ -179,42 +190,41 @@ class ARPAstat(object):
             EB = self.energy[b.ptype]
             E = max(EA.values.max(), EB.values.max())
         else:
+            
             E_matrix = self.energy[a.ptype]
             E = E_matrix[a.symbol][b.symbol]
 
+        return E
+        print "E", E
+        exit()
         z = (self.Z[a.symbol]+self.Z[b.symbol])/2
         return np.exp(E/self.kT)/z
 
-#C = confusion["vowel"]
-#print C
-#C /= C.sum(axis=0)
-#print -np.log(C)
-#exit()
+if __name__ == "__main__":
 
-A = ARPAstat(0.75)
-x,y = 'AE','AE'
-print "Exact", A.delta(x,y), A.delta(y,x)
-print
+    #A = ARPAstat(0.50)
+    A = ARPAstat(0.50)
 
-x,y = 'AE','AA'
-print "Close", A.delta(x,y), A.delta(y,x)
-print
+    x,y = 'AE','AE'
+    print "{} -> {}: ".format(x,y),
+    print "Exact {:0.4f} {:0.4f}".format( A.delta(x,y), A.delta(y,x) )
+    print
 
-x,y = 'AE','AO'
-print "Far  ", A.delta(x,y), A.delta(y,x)
-print
+    x,y = 'AE','AA'
+    print "{} -> {}: ".format(x,y),
+    print "Close {:0.4f} {:0.4f}".format( A.delta(x,y), A.delta(y,x) )
+    print
 
-exit()
-        
-a = araphet_phoneme('AO1')
-b = araphet_phoneme('AE2')
-c = araphet_phoneme('AE')
-d = araphet_phoneme('ZH')
+    x,y = 'AE','AO'
+    print "{} -> {}: ".format(x,y),
+    print "Far   {:0.4f} {:0.4f}".format( A.delta(x,y), A.delta(y,x) )
+    print
 
-print confusion["vowel"]
+    x,y = 'AE','W'
+    print "{} -> {}:  ".format(x,y),
+    print "Diff  {:0.4f} {:0.4f}".format( A.delta(x,y), A.delta(y,x) )
+    print
 
-for x,y in itertools.combinations([a,b,c,d,a],r=2):
-    print x,y,x.delta(y)
 
 
 
