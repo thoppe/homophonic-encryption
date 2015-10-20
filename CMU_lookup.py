@@ -1,4 +1,4 @@
-import collections
+import collections, re
 from HPE.ARPAbet import ARPAstat
 import numpy as np
 
@@ -6,11 +6,15 @@ import numpy as np
 f_CMU_dict = "CMUdict/cmudict-0.7b"
 
 # Load the top word set
-f_top_words = "top_50000_words.txt"
+#f_top_words = "top_50000_words.txt"
+#f_top_words = "google-10000-english-usa.txt"
+f_top_words = "20k.txt"
+
 VALID_WORDS = set()
 with open(f_top_words) as FIN:
     for line in FIN:
-        count,word = line.split()
+        #count,word = line.split()
+        word = line.strip()
         VALID_WORDS.add(word)
         
 def load_CMU():
@@ -85,10 +89,14 @@ class homophonic_word_translate(object):
         self.CMU,self.CMUX = load_CMU()
         self.A = ARPAstat(1.0)
 
-        self.min_cutoff = 1.25
+        #self.min_cutoff = 1.25
+        self.min_cutoff = 1.50
         self.beta  = beta
 
     def __call__(self,w1):
+        if w1 not in self.CMU:
+            return w1
+        
         c1 = self.CMU[w1]
        
         CLOSE = {}
@@ -99,22 +107,57 @@ class homophonic_word_translate(object):
             if dx < self.min_cutoff and w1!=w2:
                 CLOSE[w2] = dx
 
+        # No match was found, return original wor
+        if not CLOSE:
+            return w1
+
         WORDS = CLOSE.keys()
         E  = np.array([CLOSE[word] for word in WORDS])
         Z  = np.exp(-E*self.beta)
         prob = np.exp(-E*self.beta)/Z.sum()
         return np.random.choice(WORDS, p=prob)
 
+class homophonic_sentence_parser(object):
+
+    def __init__(self,beta=10.0):
+        self.trans = homophonic_word_translate(beta)
+
+    def is_all_alpha(self,s):
+        for x in s:
+            if not x.isalpha():
+                return False
+        return True
+
+    def __call__(self,s):
+        tokens = re.split('(\W+)', s)
+        s2 = []
+        for org_token in tokens:
+                        
+            if self.is_all_alpha(org_token):
+                token = self.trans(org_token.lower())
+                if org_token.istitle():
+                    token = token.title()
+            else:
+                token = org_token
+                    
+            s2.append(token)
+        return ''.join(s2)
 
 #S = "hello english language learners"
 S = "little red riding hood"
-S = "mary had a little lamb  little lamb  little lamb"
-#S = "Once upon a time there lived in a certain village a little country girl, the prettiest creature who was ever seen. Her mother was excessively fond of her; and her grandmother doted on her still more. This good woman had a little red riding hood made for her. It suited the girl so extremely well that everybody called her Little Red Riding Hood."
+#S = "Mary had a little lamb, little lamb, little lamb. Mary had a little lamb, its fleece was white as snow."
+S = "Once upon a time there lived in a certain village a little country girl, the prettiest creature who was ever seen. Her mother was excessively fond of her; and her grandmother doted on her still more. This good woman had a little red riding hood made for her. It suited the girl so extremely well that everybody called her Little Red Riding Hood."
+#S = "Four score and seven years ago our fathers brought forth on this continent, a new nation, conceived in Liberty, and dedicated to the proposition that all men are created equal."
+#S = "The bomb is in the trunk of the car."
 
-word_translator = homophonic_word_translate(beta=7.5)
+#trans = homophonic_sentence_parser(beta=7.5)
+trans = homophonic_sentence_parser(beta=10.0)
 
-S = "homo phonic encryption"
-print map(word_translator, S.split())
+#S = "homo phonic encryption"
+print S
+print trans(S)
+exit()
+#print map(, S.split())
 
 for word in S.split():
     print word, word_translator(word)
