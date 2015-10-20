@@ -11,6 +11,9 @@ def load_confusion_matrix(f_matrix):
     # Make the matrices symmetric
     df += df.T
     df /= 2.0
+
+    #df /= df
+    #df += np.diag(np.ones(df.shape[0]))
     return df
 
 confusion = {}

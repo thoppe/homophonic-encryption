@@ -1,9 +1,18 @@
 import collections
 from HPE.ARPAbet import ARPAstat
+import numpy as np
 
 # Load the dictionary
 f_CMU_dict = "CMUdict/cmudict-0.7b"
 
+# Load the top word set
+f_top_words = "top_50000_words.txt"
+VALID_WORDS = set()
+with open(f_top_words) as FIN:
+    for line in FIN:
+        count,word = line.split()
+        VALID_WORDS.add(word)
+        
 def load_CMU():
     '''
     Returns a dict of key/val, word/list of phones AND
@@ -18,7 +27,7 @@ def load_CMU():
                 tokens = line.strip().split()
                 word, tokens = tokens[0], tokens[1:]
                 word = word.lower()
-                if word.isalpha():
+                if word.isalpha() and word:
                     CMU[word] = tokens
                     CMU_LOOKUP[len(tokens)][word] = tokens
     return CMU, CMU_LOOKUP
@@ -69,54 +78,44 @@ int LevenshteinDistance(string s, int len_s, string t, int len_t)
 
 '''
 
-        
+
+class homophonic_word_translate(object):
+
+    def __init__(self,beta=10.0):
+        self.CMU,self.CMUX = load_CMU()
+        self.A = ARPAstat(1.0)
+
+        self.min_cutoff = 1.25
+        self.beta  = beta
+
+    def __call__(self,w1):
+        c1 = self.CMU[w1]
+       
+        CLOSE = {}
+        for w2 in self.CMUX[len(c1)]:
+            if w2 not in VALID_WORDS: continue
+            c2 = self.CMU[w2]
+            dx = sum([self.A.delta(x,y) for x,y in zip(c1,c2)]) / len(c1)
+            if dx < self.min_cutoff and w1!=w2:
+                CLOSE[w2] = dx
+
+        WORDS = CLOSE.keys()
+        E  = np.array([CLOSE[word] for word in WORDS])
+        Z  = np.exp(-E*self.beta)
+        prob = np.exp(-E*self.beta)/Z.sum()
+        return np.random.choice(WORDS, p=prob)
 
 
-CMU,CMUX = load_CMU()
-A = ARPAstat(0.75)
-#w1 = "english"
-#w1 = "language"
-w1 = "hello"
+#S = "hello english language learners"
+S = "little red riding hood"
+S = "mary had a little lamb  little lamb  little lamb"
+#S = "Once upon a time there lived in a certain village a little country girl, the prettiest creature who was ever seen. Her mother was excessively fond of her; and her grandmother doted on her still more. This good woman had a little red riding hood made for her. It suited the girl so extremely well that everybody called her Little Red Riding Hood."
 
-c1 = CMU[w1]
+word_translator = homophonic_word_translate(beta=7.5)
 
-CLOSE = {}
-for w2 in CMUX[len(c1)]:
-    print w2
-    c2 = CMU[w2]
-    dx = sum([A.delta(x,y) for x,y in zip(c1,c2)])
-    if dx < 5 and w1!=w2:
-        CLOSE[w2] = dx
+S = "homo phonic encryption"
+print map(word_translator, S.split())
 
-from pprint import pprint
-pprint(CLOSE)
+for word in S.split():
+    print word, word_translator(word)
 
-#import seaborn as sns
-#sns.distplot(DELTA)
-#sns.plt.show()
-#print DELTA
-
-
-exit()
-
-
-min_dist = 20
-matching_words = []
-
-for w2,c2 in CMU.items():
-    if w1 == w2: continue
-    
-    #lx = levenshtein(c1,c2)
-    lx = hamming(c1,c2)
-    if lx <= 3:
-        print w2, c1,c2, lx
-
-    #if lx < min_dist:
-    #    min_dist = lx
-    #    matching_words = []
-    #    print "New matching levenshtein distance", lx
-    #if lx == min_dist:
-    #    print "New word found", w2, lx
-    #    matching_words.append(w2)
-
-print matching_words
